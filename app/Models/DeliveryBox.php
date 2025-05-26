@@ -18,6 +18,11 @@ class DeliveryBox extends Model
 
     public function deliveryNote()
     {
-        return $this->belongsTo(DeliveryNote::class);
+        return $this->belongsTo(\App\Models\DeliveryNote::class, 'delivery_note_id');
+    }
+
+    public function grower()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 }

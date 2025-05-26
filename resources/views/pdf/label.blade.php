@@ -22,9 +22,14 @@
             <p class="label-code">Label Code: {{ $box->label_code }}</p>
 
             {{-- QR Code (embedded as SVG) --}}
-            <div>
-                {!! QrCode::format('svg')->size(150)->margin(1)->generate($box->label_code) !!}
-            </div>
+            @php
+                $qr = base64_encode(
+                QrCode::format('png')
+                      ->size(100)
+                      ->generate(route('trace.show', $box->label_code))
+            );
+            @endphp
+            <img src="data:image/png;base64,{{ $qr }}" alt="QR Code">
         </div>
     @endforeach
 </body>

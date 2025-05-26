@@ -5,33 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'GrowLocal') }}</title>
 
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Optional: Bootstrap JS (for alerts, modals, etc.) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- Vite styles (main build) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Bootstrap (you already use it) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 </head>
-<body class="bg-light">
+<body class="d-flex" style="font-family: 'Inter', system-ui, sans-serif;">
+    @auth
+        @include('layouts.sidebar')
+    @endauth
 
-        <div id="app" class="d-flex">
-        {{-- Sidebar for grower role --}}
-        @auth
-            @if(auth()->user()->hasRole('grower'))
-                @include('layouts.sidebar') {{-- create this partial --}}
-            @endif
-        @endauth
+    <div class="flex-grow-1 d-flex flex-column">
+        @include('layouts.topnav')
 
-        <div class="flex-fill">
-            @include('layouts.navigation') {{-- Top nav --}}
-
-            <!-- Page Content -->
-            <main class="py-4 px-3">
-                {{ $slot ?? '' }}
-                @yield('content')
-            </main>
-        </div>
+        <main class="flex-grow-1 p-4">
+            @yield('content')
+        </main>
     </div>
 </body>
 </html>

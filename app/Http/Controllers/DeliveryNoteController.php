@@ -9,9 +9,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\User;
+use App\Models\CropPlan;
 
 class DeliveryNoteController extends Controller
 {
+    
     public function dashboard()
     {
         $user = auth()->user();
@@ -26,7 +29,27 @@ class DeliveryNoteController extends Controller
             ->where('recalled', true)
             ->get();
 
-        return view('grower.dashboard', compact('notes', 'recalled'));
+        // Load crop plans for this grower
+        $plans = CropPlan::where('user_id', $user->id)->orderBy('week_start')->get();
+
+        // Calculate supplied quantities from delivery notes
+        $supplied = [];
+        foreach ($plans as $plan) {
+            $total = 0;
+            foreach ($notes as $note) {
+                foreach ($note->boxes as $box) {
+                    if (
+                        strtolower($box->crop) === strtolower($plan->crop) &&
+                        $note->created_at->startOfWeek()->eq(\Carbon\Carbon::parse($plan->week_start)->startOfWeek())
+                    ) {
+                        $total += $box->quantity;
+                    }
+                }
+            }
+            $supplied[$plan->id] = $total;
+        }
+
+        return view('grower.dashboard', compact('notes', 'recalled', 'plans', 'supplied'));
     }
 
     public function index()
@@ -41,50 +64,55 @@ class DeliveryNoteController extends Controller
         return view('grower.notes', compact('notes'));
     }
 
+    
+   
     public function create()
     {
         $user = auth()->user();
+        $currentWeek = now()->startOfWeek()->toDateString();
 
-        $latest = DeliveryNote::with('boxes')
-            ->where('user_id', $user->id)
-            ->latest()
-            ->first();
+        $weeklyPlans = \App\Models\WeeklyCropPlan::with(['commitment.cropOffering'])
+            ->whereHas('commitment', fn($q) => $q->where('grower_id', $user->id))
+            ->where('week', $currentWeek)
+            ->get();
 
-        return view('grower.delivery_notes.create', compact('latest'));
+        $distributors = User::role('distributor')->get(); // ✅ Add this line
+
+        return view('grower.delivery_notes.create', [
+            'weeklyPlans' => $weeklyPlans,
+            'distributors' => $distributors // ✅ And pass it to the view
+        ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'crops' => 'required|array',
-            'quantities' => 'required|array',
-            'destination' => 'required|string',
-            'invoice' => 'nullable|file|mimes:pdf,jpg,jpeg,png',
+            'distributor_id' => 'required|exists:users,id',
+            'crops.*.name' => 'required|string',
+            'crops.*.quantity' => 'required|numeric|min:0.01',
+            'invoice' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
-
-        $path = null;
-        if ($request->hasFile('invoice')) {
-            $path = $request->file('invoice')->store('invoices', 'public');
-        }
 
         $note = new DeliveryNote();
         $note->user_id = auth()->id();
-        $note->destination = $request->destination;
-        $note->invoice_path = $path;
-        $note->traceability_number = strtoupper(Str::random(10));
-        $note->status = 'Pending';
-        $note->recalled = false;
+        $note->distributor_id = $request->distributor_id;
+        $note->status = 'pending';
+        $note->traceability_number = strtoupper(Str::random(8));
+
+        if ($request->hasFile('invoice')) {
+            $note->invoice_path = $request->file('invoice')->store('invoices', 'public');
+        }
+
         $note->save();
 
-        foreach ($request->crops as $i => $crop) {
+        foreach ($request->crops as $crop) {
             $note->boxes()->create([
-                'crop' => $crop,
-                'quantity' => $request->quantities[$i],
-                'label_code' => strtoupper(Str::random(8)),
+                'crop' => $crop['name'],
+                'quantity' => $crop['quantity'],
             ]);
         }
 
-        return redirect()->route('grower.dashboard')->with('success', 'Delivery note and boxes submitted.');
+        return redirect()->route('grower.notes.index')->with('success', 'Delivery note created.');
     }
 
     public function markDelivered($id)
@@ -152,7 +180,7 @@ class DeliveryNoteController extends Controller
 
         return view('admin.recalls', compact('notes'));
     }
-    
+
     public function acknowledgeRecall($id)
     {
         $note = DeliveryNote::where('id', $id)
@@ -166,3 +194,4 @@ class DeliveryNoteController extends Controller
         return back()->with('success', 'Recall acknowledged.');
     }
 }
+

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\DeliveryNote;
+use App\Models\CropPlan;
 
 class GrowerController extends Controller
 {
@@ -15,5 +16,14 @@ class GrowerController extends Controller
         }
 
         abort(403, 'Unauthorized');
+    }
+
+    public function cropPlan()
+    {
+        $plans = \App\Models\CropPlan::where('grower_id', auth()->id())
+            ->orderBy('week')
+            ->get();
+
+        return view('grower.crop_plan', compact('plans'));
     }
 }

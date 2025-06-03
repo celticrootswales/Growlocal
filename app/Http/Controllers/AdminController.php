@@ -3,68 +3,104 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\CropOffering;
 use App\Models\DeliveryNote;
-use App\Models\Recall;
+use App\Models\User;
 
 class AdminController extends Controller
 {
-    public function dashboard()
+    // 🧮 Dashboard logic for Yearly Crop Offerings
+    public function dashboard(Request $request)
     {
-        return view('admin.dashboard');
-    }
+        $year = $request->get('year', date('Y'));
 
-    public function viewNotes(Request $request)
-    {
-        $query = DeliveryNote::with(['boxes', 'user'])->latest();
+        $offerings = CropOffering::with('distributors')
+            ->where('year', $year)
+            ->get();
 
-        if ($request->filled('search')) {
-            $query->where('traceability_number', 'like', '%' . $request->search . '%');
+        $totalPotentialIncome = $offerings->sum(function ($offering) {
+            return $offering->default_price * ($offering->amount_needed ?? 0);
+        });
+
+        $incomeByTerm = $offerings->isNotEmpty()
+            ? $offerings->groupBy('term')->map(function ($group) {
+                return $group->sum(function ($item) {
+                    return $item->default_price * ($item->amount_needed ?? 0);
+                });
+            })
+            : collect();
+
+        $distributorStats = collect();
+        foreach ($offerings as $offering) {
+            foreach ($offering->distributors as $dist) {
+                $distributorStats[$dist->id] = [
+                    'name' => $dist->name,
+                    'offerings_count' => ($distributorStats[$dist->id]['offerings_count'] ?? 0) + 1
+                ];
+            }
         }
 
-        $notes = $query->get();
+        $topDistributors = collect($distributorStats->values());
 
+        $cropsWithoutAmount = $offerings->whereNull('amount_needed')->count();
+
+        $recentNotes = DeliveryNote::with(['user', 'boxes'])
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $activeRecalls = DeliveryNote::with('user')
+            ->where('recalled', true)
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('admin.dashboard', [
+            'totalPotentialIncome' => $totalPotentialIncome,
+            'incomeByTerm' => $incomeByTerm,
+            'topDistributors' => $topDistributors,
+            'cropsWithoutAmount' => $cropsWithoutAmount,
+            'totalOfferings' => $offerings->count(),
+            'selectedYear' => $year,
+            'recentNotes' => $recentNotes,
+            'activeRecalls' => $activeRecalls,
+        ]);
+    }
+
+    // ✅ Admin view for all delivery notes
+    public function viewNotes()
+    {
+        $notes = DeliveryNote::with(['user', 'boxes'])->latest()->paginate(15);
         return view('admin.notes', compact('notes'));
     }
 
-    public function manageRecalls(Request $request)
+    // ✅ Admin view for active recalls
+    public function manageRecalls()
     {
-        $query = DeliveryNote::with('user')->where('recalled', true);
+        $recalls = DeliveryNote::with('user')
+            ->where('recalled', true)
+            ->latest()
+            ->paginate(15);
 
-        // Apply traceability number search
-        if ($request->filled('search')) {
-            $query->where('traceability_number', 'like', '%' . $request->search . '%');
-        }
-
-        $notes = $query->orderBy('created_at', 'desc')->get();
-
-        return view('admin.recalls', compact('notes'));
+        return view('admin.recalls', compact('recalls'));
     }
 
-    public function issueRecall(Request $request, $noteId)
+    // ✅ Admin action to issue a recall
+    public function issueRecall($noteId)
     {
         $note = DeliveryNote::findOrFail($noteId);
-
-        // Ensure recall reason is stored
-        Recall::updateOrCreate(
-            ['delivery_note_id' => $noteId],
-            ['reason' => $request->input('reason', 'No reason provided')]
-        );
-
-        // Set recalled flag
         $note->recalled = true;
         $note->save();
 
-        return back()->with('success', 'Recall issued for this batch.');
+        return redirect()->back()->with('success', 'Recall issued successfully.');
     }
 
+    // ✅ Admin action to remove a recall
     public function removeRecall($noteId)
     {
-        $note = \App\Models\DeliveryNote::findOrFail($noteId);
-        $note->recalled = false; // ✅ unset the recall flag
+        $note = DeliveryNote::findOrFail($noteId);
+        $note->recalled = false;
         $note->save();
-
-        // Optional: also delete from the recalls table if you're tracking reasons separately
-        \App\Models\Recall::where('delivery_note_id', $noteId)->delete();
 
         return redirect()->back()->with('success', 'Recall removed successfully.');
     }

@@ -18,7 +18,7 @@
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    @if($notes->isEmpty())
+    @if($recalls->isEmpty())
         <div class="alert alert-info">No recalled batches at the moment.</div>
     @else
         <div class="table-responsive">
@@ -30,26 +30,18 @@
                         <th>Destination</th>
                         <th>Date</th>
                         <th>Reason</th>
-                        <th>Actions</th>
+                        {{-- other headers --}}
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($notes as $note)
+                    @foreach($recalls as $recall)
                         <tr>
-                            <td>{{ $note->traceability_number }}</td>
-                            <td>{{ $note->user->name ?? 'Unknown' }}</td>
-                            <td>{{ $note->destination }}</td>
-                            <td>{{ $note->created_at->format('Y-m-d') }}</td>
-                            <td>{{ $note->recall->reason ?? 'N/A' }}</td>
-                            <td>
-                                <form action="{{ route('admin.recall.remove', $note->id) }}" method="POST" onsubmit="return confirm('Remove this recall?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        ❌ Remove Recall
-                                    </button>
-                                </form>
-                            </td>
+                            <td>{{ $recall->traceability_number }}</td>
+                            <td>{{ $recall->user->name }}</td>
+                            <td>{{ $recall->destination ?? 'N/A' }}</td>
+                            <td>{{ $recall->created_at->format('d M Y') }}</td>
+                            <td>{{ $recall->recall_reason ?? 'N/A' }}</td>
+                            {{-- other fields --}}
                         </tr>
                     @endforeach
                 </tbody>

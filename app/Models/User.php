@@ -54,4 +54,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\DeliveryNote::class);
     }
+
+    public function cropOfferings()
+    {
+        return $this->belongsToMany(CropOffering::class, 'crop_offering_distributor', 'distributor_id', 'crop_offering_id');
+    }
+
 }

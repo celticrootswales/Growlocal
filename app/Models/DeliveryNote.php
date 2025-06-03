@@ -10,8 +10,13 @@ class DeliveryNote extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'destination', 'traceability_number', 'status',
-        'invoice_path', 'recalled', 'recall_acknowledged'
+        'user_id',
+        'distributor_id',
+        'traceability_number',
+        'status',
+        'invoice_path',
+        'recalled',
+        'recall_acknowledged',
     ];
 
     // Relationship: DeliveryNote belongs to a User
@@ -36,5 +41,10 @@ class DeliveryNote extends Model
     public function recall()
     {
         return $this->hasOne(Recall::class, 'delivery_note_id');
+    }
+
+    public function distributor()
+    {
+        return $this->belongsTo(User::class, 'distributor_id');
     }
 }

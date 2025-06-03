@@ -16,7 +16,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Date</th>
-                        <th>Destination</th>
+                        <th>Distributor</th>
                         <th>Trace #</th>
                         <th>Crops</th>
                         <th>Status</th>
@@ -27,7 +27,7 @@
                     @foreach($notes as $note)
                         <tr>
                             <td>{{ $note->created_at->format('Y-m-d') }}</td>
-                            <td>{{ $note->destination }}</td>
+                            <td>{{ $note->distributor->name ?? '—' }}</td>
                             <td>{{ $note->traceability_number }}</td>
                             <td>
                                 <ul class="mb-0 list-unstyled">

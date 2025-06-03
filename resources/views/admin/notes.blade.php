@@ -24,7 +24,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Grower</th>
-                        <th>Destination</th>
+                        <th>Distributor</th>
                         <th>Trace #</th>
                         <th>Status</th>
                         <th>Crops</th>
@@ -36,7 +36,7 @@
                     <tr>
                         <td>{{ $note->created_at->format('Y-m-d') }}</td>
                         <td>{{ $note->user->name ?? 'Unknown' }}</td>
-                        <td>{{ $note->destination }}</td>
+                        <td>{{ $note->distributor->name ?? '—' }}</td>
                         <td>{{ $note->traceability_number }}</td>
                         <td>
                             @if($note->recalled)

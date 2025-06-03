@@ -69,5 +69,42 @@
             </div>
         </div>
     </div>
+
+    @if($plans->isNotEmpty())
+        <h4 class="mt-4">📅 Your Crop Plan</h4>
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>Week</th>
+                    <th>Crop</th>
+                    <th>Expected</th>
+                    <th>Delivered</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($plans as $plan)
+                    <tr>
+                        <td>{{ \Carbon\Carbon::parse($plan->week_start)->format('d M Y') }}</td>
+                        <td>{{ $plan->crop }} ({{ $plan->unit }})</td>
+                        <td>{{ $plan->expected_quantity }}</td>
+                        <td>{{ $supplied[$plan->id] ?? 0 }}</td>
+                        <td>
+                            @php
+                                $delivered = $supplied[$plan->id] ?? 0;
+                            @endphp
+                            @if($delivered >= $plan->expected_quantity)
+                                ✅
+                            @elseif($delivered > 0)
+                                ⚠ Partial
+                            @else
+                                ❌ Not Supplied
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 </div>
 @endsection

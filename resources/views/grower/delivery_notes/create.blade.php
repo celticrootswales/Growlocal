@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-5">
-    <h1 class="fw-bold text-success mb-4">➕ Create New Delivery Note</h1>
+<div class="container pb-5">
+    <h1 class="fw-bold text-success fs-2 mb-4">Create Delivery Note</h1>
 
     <!-- Delivery Note Form -->
     <div class="card shadow-sm mb-5">
@@ -13,58 +13,76 @@
             <form action="{{ route('grower.delivery-notes.store') }}" method="POST" enctype="multipart/form-data" class="mb-4">
                 @csrf
 
-                <div id="crop-entries">
-                    <div class="crop-entry mb-3">
-                        <label class="form-label">Crop</label>
-                        <input type="text" class="form-control" name="crops[]" required>
-                        <label class="form-label mt-2">Quantity (kg/Units)</label>
-                        <input type="number" class="form-control" name="quantities[]" required>
+                <!-- Pre-filled Weekly Estimates -->
+                <h5 class="mb-3">🌿 Pre-filled Weekly Estimates</h5>
+                @forelse($weeklyPlans as $plan)
+                    <div class="mb-3">
+                        <label class="form-label">{{ $plan->commitment->cropOffering->name }}</label>
+                        <input type="hidden" name="crops[{{ $loop->index }}][name]" value="{{ $plan->commitment->cropOffering->name }}">
+                        <input type="number" step="0.1" class="form-control"
+                               name="crops[{{ $loop->index }}][quantity]"
+                               value="{{ $plan->estimate ?? '' }}"
+                               placeholder="Quantity" required>
+                        <small class="text-muted">Unit: {{ $plan->commitment->cropOffering->unit }}</small>
                     </div>
-                </div>
+                @empty
+                    <p class="text-muted">No crop estimates found for this week.</p>
+                @endforelse
 
-                <button type="button" class="btn btn-secondary mb-3" id="add-entry">➕ Add Another Box</button>
+                <!-- Manual Crop Entry Section -->
+                <h5 class="mb-3">➕ Manually Add Crops</h5>
+                <div id="crop-entries"></div>
+                <button type="button" class="btn btn-secondary mb-3" id="add-entry">Add Another Crop</button>
 
+                <!-- Distributor Selection -->
                 <div class="mb-3">
-                    <label class="form-label">Destination</label>
-                    <select class="form-control" name="destination" required>
-                        <option value="">Select Destination</option>
-                        <option value="Castle Howell">Castle Howell</option>
-                        <option value="Bishop Fruit and Veg">Bishop Fruit and Veg</option>
+                    <label class="form-label">Select Distributor</label>
+                    <select class="form-select" name="distributor_id" required>
+                        <option value="">Select Distributor</option>
+                        @foreach($distributors as $distributor)
+                            <option value="{{ $distributor->id }}">{{ $distributor->name }}</option>
+                        @endforeach
                     </select>
                 </div>
 
+                <!-- Invoice Attachment -->
                 <div class="mb-3">
                     <label class="form-label">Attach Invoice</label>
                     <input type="file" class="form-control" name="invoice">
                 </div>
 
+                <!-- Submit Button -->
                 <button type="submit" class="btn btn-success">Submit Delivery Note</button>
             </form>
 
+            <!-- Add Crop Entry Script -->
             <script>
+                let cropIndex = {{ $weeklyPlans->count() }};
                 document.getElementById('add-entry').addEventListener('click', function () {
                     const container = document.getElementById('crop-entries');
                     const entry = document.createElement('div');
-                    entry.classList.add('crop-entry', 'mb-3');
+                    entry.classList.add('mb-3');
                     entry.innerHTML = `
                         <label class="form-label">Crop</label>
-                        <input type="text" class="form-control" name="crops[]" required>
+                        <input type="text" class="form-control" name="crops[${cropIndex}][name]" required>
                         <label class="form-label mt-2">Quantity (kg/Units)</label>
-                        <input type="number" class="form-control" name="quantities[]" required>
+                        <input type="number" class="form-control" name="crops[${cropIndex}][quantity]" required>
                         <button type="button" class="btn btn-danger btn-sm mt-2 remove-entry">Remove</button>
                     `;
                     container.appendChild(entry);
+                    cropIndex++;
                 });
 
                 document.addEventListener('click', function (e) {
                     if (e.target.classList.contains('remove-entry')) {
-                        e.target.closest('.crop-entry').remove();
+                        e.target.closest('div.mb-3').remove();
                     }
                 });
             </script>
         </div>
     </div>
 
+    <!-- Latest Delivery Note Display -->
     @isset($latest)
     <div class="card shadow-sm">
         <div class="card-header bg-success text-white">

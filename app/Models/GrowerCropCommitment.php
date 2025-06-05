@@ -21,8 +21,27 @@ class GrowerCropCommitment extends Model
         return $this->belongsTo(User::class, 'grower_id');
     }
 
+    public function distributorNeed()
+    {
+        return $this->belongsTo(DistributorCropNeed::class, 'distributor_crop_need_id');
+    }    
+
+    public function cropOffering()
+    {
+        return $this->hasOneThrough(
+            CropOffering::class,
+            DistributorCropNeed::class,
+            'id', // Foreign key on DistributorCropNeed
+            'id', // Foreign key on CropOffering
+            'distributor_crop_need_id', // Local key on this model
+            'crop_offering_id' // Local key on DistributorCropNeed
+        );
+    }
+
     public function distributorCropNeed()
     {
         return $this->belongsTo(DistributorCropNeed::class);
     }
+
+
 }

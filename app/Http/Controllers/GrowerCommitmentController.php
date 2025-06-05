@@ -2,39 +2,89 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DistributorCropNeed;
-use App\Models\GrowerCropCommitment;
 use Illuminate\Http\Request;
+use App\Models\GrowerCropCommitment;
+use App\Models\DistributorCropNeed;
 
 class GrowerCommitmentController extends Controller
 {
     public function index()
     {
-        $needs = DistributorCropNeed::with('cropOffering', 'distributor')->get();
-        $commitments = GrowerCropCommitment::where('grower_id', auth()->id())->get()->keyBy('distributor_crop_need_id');
+        $growerId = auth()->id();
 
-        return view('grower.commitments.index', compact('needs', 'commitments'));
+        // Show needs assigned to grower's distributors
+        $availableNeeds = DistributorCropNeed::with(['cropOffering', 'distributor'])
+            ->whereDoesntHave('growerCommitments', function ($query) use ($growerId) {
+                $query->where('grower_id', $growerId);
+            })
+            ->get();
+
+        // Show grower's commitments
+        $commitments = GrowerCropCommitment::with(['distributorNeed.distributor', 'cropOffering'])
+            ->where('grower_id', $growerId)
+            ->get();
+
+        return view('grower.commitments.index', compact('availableNeeds', 'commitments'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'distributor_crop_need_id' => 'required|exists:distributor_crop_needs,id',
-            'committed_quantity' => 'required|numeric|min:0',
-            'notes' => 'nullable|string|max:255',
+            'quantity' => 'required|numeric|min:0.1',
+            'notes' => 'nullable|string',
         ]);
 
-        GrowerCropCommitment::updateOrCreate(
-            [
-                'grower_id' => auth()->id(),
-                'distributor_crop_need_id' => $request->distributor_crop_need_id,
-            ],
-            [
-                'committed_quantity' => $request->committed_quantity,
-                'notes' => $request->notes,
-            ]
-        );
+        GrowerCropCommitment::create([
+            'grower_id' => auth()->id(),
+            'distributor_crop_need_id' => $request->distributor_crop_need_id,
+            'committed_quantity' => $request->quantity,
+            'notes' => $request->notes,
+        ]);
 
-        return back()->with('success', 'Commitment saved.');
+        return back()->with('success', 'Commitment submitted!');
+    }
+
+    public function edit($id)
+    {
+        $commitment = GrowerCropCommitment::findOrFail($id);
+
+        if ($commitment->grower_id !== auth()->id()) {
+            abort(403);
+        }
+
+        return view('grower.commitments.edit', compact('commitment'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $commitment = GrowerCropCommitment::findOrFail($id);
+
+        if ($commitment->grower_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'committed_quantity' => 'required|numeric|min:0.1',
+        ]);
+
+        $commitment->update([
+            'committed_quantity' => $request->committed_quantity,
+        ]);
+
+        return back()->with('success', 'Commitment updated.');
+    }
+
+    public function destroy($id)
+    {
+        $commitment = GrowerCropCommitment::findOrFail($id);
+
+        if ($commitment->grower_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $commitment->delete();
+
+        return back()->with('success', 'Commitment deleted.');
     }
 }

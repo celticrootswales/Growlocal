@@ -109,6 +109,7 @@ class DeliveryNoteController extends Controller
             $note->boxes()->create([
                 'crop' => $crop['name'],
                 'quantity' => $crop['quantity'],
+                'label_code' => strtoupper(Str::random(8)), // Example label code
             ]);
         }
 

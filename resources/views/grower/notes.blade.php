@@ -46,8 +46,8 @@
                                 @endif
                             </td>
                             <td class="d-flex gap-2 flex-wrap">
-                                <a href="{{ url('/grower/pdf/delivery-note/' . $note->id) }}" class="btn btn-sm btn-outline-secondary">📄 PDF</a>
-                                <a href="{{ url('/grower/pdf/label/' . $note->id) }}" class="btn btn-sm btn-outline-dark">🏷 Label</a>
+                                <a href="{{ route('grower.delivery-notes.pdf', $note->id) }}" class="btn btn-sm btn-outline-secondary">📄 PDF</a>
+                                <a href="{{ route('grower.delivery-notes.label', $note->id) }}" class="btn btn-sm btn-outline-dark">🏷 Label</a>
 
                                 <form action="{{ route('grower.delivery-notes.markDelivered', $note->id) }}" method="POST">
                                     @csrf

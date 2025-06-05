@@ -16,13 +16,18 @@ class DistributorCropNeed extends Model
         'notes',
     ];
 
+    public function cropOffering()
+    {
+        return $this->belongsTo(CropOffering::class, 'crop_offering_id');
+    }
+
     public function distributor()
     {
         return $this->belongsTo(User::class, 'distributor_id');
     }
 
-    public function cropOffering()
+    public function growerCommitments()
     {
-        return $this->belongsTo(CropOffering::class);
+        return $this->hasMany(GrowerCropCommitment::class, 'distributor_crop_need_id');
     }
 }

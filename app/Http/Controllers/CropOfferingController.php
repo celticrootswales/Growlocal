@@ -2,32 +2,36 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CropOffering;
-use App\Models\User;
 use Illuminate\Http\Request;
+use App\Models\CropOffering;
+use App\Models\DistributorCropNeed;
+use App\Models\User;
 
 class CropOfferingController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CropOffering::with('distributors');
+        $distributorFilter = $request->input('distributor');
+        $termFilter = $request->input('term');
+        $yearFilter = $request->input('year');
 
-        if ($request->filled('distributor')) {
-            $query->whereHas('distributors', function ($q) use ($request) {
-                $q->where('users.id', $request->input('distributor'));
-            });
+        $query = CropOffering::with('distributors')->orderBy('crop_name');
+
+        if ($distributorFilter) {
+            $query->whereHas('distributors', fn($q) =>
+                $q->where('users.id', $distributorFilter)
+            );
         }
 
-        if ($request->filled('term')) {
-            $query->where('term', $request->input('term'));
+        if ($termFilter) {
+            $query->where('term', $termFilter);
         }
 
-        if ($request->filled('year')) {
-            $query->where('year', $request->input('year'));
+        if ($yearFilter) {
+            $query->where('year', $yearFilter);
         }
 
-        $offerings = $query->orderBy('crop_name')->get();
-
+        $offerings = $query->get();
         $distributors = User::role('distributor')->get();
 
         return view('admin.crop_offerings.index', compact('offerings', 'distributors'));
@@ -47,7 +51,7 @@ class CropOfferingController extends Controller
             'distributors.*' => 'exists:users,id',
         ]);
 
-        // Fallback: assign emoji based on crop name if not provided
+        // Emoji fallback
         if (empty($validated['icon'])) {
             $emojiMap = [
                 'carrot' => '🥕', 'potato' => '🥔', 'tomato' => '🍅',
@@ -100,30 +104,14 @@ class CropOfferingController extends Controller
             'distributors.*' => 'exists:users,id',
         ]);
 
-        if (empty($validated['icon'])) {
-            $emojiMap = [
-                'carrot' => '🥕', 'potato' => '🥔', 'tomato' => '🍅',
-                'cucumber' => '🥒', 'broccoli' => '🥦', 'lettuce' => '🥬',
-                'onion' => '🧅', 'corn' => '🌽', 'pepper' => '🫑',
-                'mushroom' => '🍄', 'apple' => '🍎', 'orange' => '🍊',
-                'banana' => '🍌', 'grape' => '🍇', 'strawberry' => '🍓',
-                'watermelon' => '🍉', 'lemon' => '🍋', 'garlic' => '🧄',
-                'peas' => '🫛', 'beans' => '🫘', 'pumpkin' => '🎃',
-                'radish' => '🌶️',
-            ];
-
-            foreach ($emojiMap as $name => $emoji) {
-                if (str_contains(strtolower($validated['crop_name']), $name)) {
-                    $validated['icon'] = $emoji;
-                    break;
-                }
-            }
-        }
-
         $offering->update($validated);
         $offering->distributors()->sync($request->distributors ?? []);
 
-        return redirect()->route('admin.crop-offerings.index')->with('success', 'Crop offering updated.');
+        // ✅ Reset submitted flag
+        $offering->submitted_to_distributors = false;
+        $offering->save();
+
+        return redirect()->route('admin.crop-offerings.index')->with('success', 'Crop offering updated and marked as not submitted.');
     }
 
     public function destroy($id)
@@ -133,5 +121,51 @@ class CropOfferingController extends Controller
         $offering->delete();
 
         return redirect()->route('admin.crop-offerings.index')->with('success', 'Offering deleted.');
+    }
+
+    public function pushToNeeds($id)
+    {
+        $offering = CropOffering::with('distributors')->findOrFail($id);
+
+        foreach ($offering->distributors as $distributor) {
+            DistributorCropNeed::updateOrCreate(
+                [
+                    'crop_offering_id' => $offering->id,
+                    'distributor_id' => $distributor->id,
+                ],
+                [
+                    'desired_quantity' => $offering->amount_needed ?? 0,
+                    'amount_needed' => $offering->amount_needed ?? 0,
+                    'unit' => $offering->unit,
+                    'term' => $offering->term,
+                    'year' => $offering->year,
+                ]
+            );
+        }
+
+        return redirect()->back()->with('success', 'Crop needs pushed to distributors successfully!');
+    }
+
+    public function submitToDistributors($id)
+    {
+        $offering = \App\Models\CropOffering::with('distributors')->findOrFail($id);
+
+        foreach ($offering->distributors as $distributor) {
+            \App\Models\DistributorCropNeed::updateOrCreate(
+                [
+                    'crop_offering_id' => $offering->id,
+                    'distributor_id' => $distributor->id,
+                ],
+                [
+                    'desired_quantity' => $offering->amount_needed ?? 0,
+                ]
+            );
+        }
+
+        // ✅ Set flag so we know it's submitted
+        $offering->submitted_to_distributors = true;
+        $offering->save();
+
+        return redirect()->back()->with('success', 'Crop offering submitted to distributors!');
     }
 }

@@ -219,6 +219,6 @@ th, td {
             }
         });
     </script>
-
+    @stack('scripts')
 </body>
 </html>

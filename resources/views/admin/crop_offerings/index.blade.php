@@ -4,9 +4,15 @@
 <div class="container-fluid py-4">
     <h1 class="mt-3 fw-bold">Yearly Crop Offerings</h1>
 
-   
-    <!-- Inline Add Form -->
-    <div class="card mb-4 shadow-sm mt-4">
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    {{-- Create Crop Offering Form --}}
+    <div class="card mb-4 shadow-sm">
         <div class="card-header header-blue text-white py-3">
             <strong>Add New Crop Offering</strong>
         </div>
@@ -60,9 +66,7 @@
         </form>
     </div>
 
-    <h2>Existing Crop Offerings</h2>
-
-     <!-- Filter Section -->
+    {{-- Filters --}}
     <form method="GET" action="{{ route('admin.crop-offerings.index') }}" class="row g-3 mt-3 mb-4">
         <div class="col-md-3">
             <label class="form-label">Distributor</label>
@@ -93,18 +97,8 @@
         </div>
     </form>
 
-
-
-    <!-- Legend -->
-    <div class="mb-3">
-        <strong>Legend:</strong>
-        @foreach(['Autumn' => 'bg-warning', 'Spring' => 'bg-success', 'Summer' => 'bg-info', 'Food and Fun' => 'bg-primary'] as $term => $class)
-            <span class="badge {{ $class }} me-1">{{ $term }}</span>
-        @endforeach
-    </div>
-
-    <!-- Offerings Table -->
-    <div class="card shadow-sm">
+    {{-- Existing Offerings Table --}}
+    <div class="card shadow-sm mb-5">
         <div class="card-header header-blue text-white py-3">
             <h5 class="mb-0">Existing Crop Offerings</h5>
         </div>
@@ -118,10 +112,11 @@
                             <th>Crop</th>
                             <th>Unit</th>
                             <th>Year</th>
-                            <th>Price (£)</th>
+                            <th>Price</th>
                             <th>Amount</th>
                             <th>Term</th>
                             <th>Distributors</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -132,7 +127,7 @@
                                 <td>{{ $offering->unit }}</td>
                                 <td>{{ $offering->year }}</td>
                                 <td>£{{ number_format($offering->default_price, 2) }}</td>
-                                <td>{{ $offering->amount_needed ? $offering->amount_needed . ' (' . $offering->unit . ')' : '-' }}</td>
+                                <td>{{ $offering->amount_needed }} {{ $offering->unit }}</td>
                                 <td>
                                     <span class="badge
                                         @if($offering->term === 'Autumn') bg-warning
@@ -140,8 +135,7 @@
                                         @elseif($offering->term === 'Summer') bg-info
                                         @elseif($offering->term === 'Food and Fun') bg-primary
                                         @else bg-secondary
-                                        @endif
-                                    ">
+                                        @endif">
                                         {{ $offering->term ?? '-' }}
                                     </span>
                                 </td>
@@ -151,12 +145,28 @@
                                     @endforeach
                                 </td>
                                 <td>
-                                    <form action="{{ route('admin.crop-offerings.destroy', $offering->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');">
+                                    @if($offering->submitted_to_distributors)
+                                        <span class="badge bg-info">Submitted</span>
+                                    @else
+                                        <span class="badge bg-warning">Draft</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if (!$offering->submitted_to_distributors)
+                                        <form method="POST" action="{{ route('admin.offerings.submit', $offering->id) }}" class="d-inline">
+                                            @csrf
+                                            <button class="btn btn-sm btn-success">Submit</button>
+                                        </form>
+                                    @endif
+
+                                    <a href="{{ route('admin.crop-offerings.edit', $offering->id) }}" class="btn btn-sm btn-warning">Edit</a>
+
+                                    <form method="POST" action="{{ route('admin.crop-offerings.destroy', $offering->id) }}"
+                                          class="d-inline" onsubmit="return confirm('Are you sure?');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                        <button class="btn btn-sm btn-danger">Delete</button>
                                     </form>
-                                    <a href="{{ route('admin.crop-offerings.edit', $offering->id) }}" class="btn btn-sm btn-warning">Edit</a>
                                 </td>
                             </tr>
                         @endforeach

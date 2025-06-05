@@ -6,6 +6,11 @@
             </a>
         </li>
         <li class="nav-item mb-2">
+            <a href="{{ route('admin.growers.index') }} " class="btn w-100 text-start rounded-0 border-start-0 border-end-0 py-3 fs-6 {{ Route::is('admin.notes') ? 'btn-light text-success fw-bold' : 'btn-outline-light text-white' }}">
+                <i class="bi bi-person-plus"></i> Manage Growers
+            </a>
+        </li>
+        <li class="nav-item mb-2">
             <a href="{{ route('admin.notes') }}" class="btn w-100 text-start rounded-0 border-start-0 border-end-0 py-3 fs-6 {{ Route::is('admin.notes') ? 'btn-light text-success fw-bold' : 'btn-outline-light text-white' }}">
                 <i class="bi bi-boxes me-2"></i> Delivery Notes
             </a>

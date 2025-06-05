@@ -59,5 +59,30 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(CropOffering::class, 'crop_offering_distributor', 'distributor_id', 'crop_offering_id');
     }
+    
+    /**
+     * Distributors this grower is linked to.
+     */
+    public function distributors()
+    {
+        return $this->belongsToMany(User::class, 'distributor_grower', 'grower_id', 'distributor_id');
+    }
 
+    /**
+     * Commitments this grower has made.
+     */
+    public function cropCommitments()
+    {
+        return $this->hasMany(GrowerCropCommitment::class);
+    }
+
+    public function assignedDistributors()
+    {
+        return $this->belongsToMany(User::class, 'distributor_grower', 'grower_id', 'distributor_id');
+    }
+
+    public function assignedGrowers()
+    {
+        return $this->belongsToMany(User::class, 'distributor_grower', 'distributor_id', 'grower_id');
+    }
 }

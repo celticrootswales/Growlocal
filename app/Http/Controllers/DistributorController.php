@@ -11,6 +11,16 @@ use Illuminate\Support\Facades\Response;
 
 class DistributorController extends Controller
 {
+    public function index()
+    {
+        return $this->cropPlan(); // reuse your existing method
+    }
+
+    public function store(Request $request)
+    {
+        return $this->storeCropPlan($request); // reuse your existing method
+    }
+
     // Show delivery dashboard
     public function dashboard(Request $request)
     {

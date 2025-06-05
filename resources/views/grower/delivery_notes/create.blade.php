@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container pb-5">
+<div class="container py-5">
     <h1 class="fw-bold text-success fs-2 mb-4">Create Delivery Note</h1>
 
     <!-- Delivery Note Form -->

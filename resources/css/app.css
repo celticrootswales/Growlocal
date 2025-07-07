@@ -58,3 +58,20 @@ th, td {
     text-align: left;
 }
 
+.allocation-row input {
+    min-height: 38px;
+}
+
+.card-header {
+    background: #f6f9fc;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.card-body {
+    background: #fff;
+}
+
+.btn-sm {
+    font-size: 0.85rem;
+}
+

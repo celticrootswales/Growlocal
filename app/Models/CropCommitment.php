@@ -24,4 +24,9 @@ class CropCommitment extends Model
     {
         return $this->belongsTo(User::class, 'grower_id');
     }
+    
+    public function distributorCropNeed()
+    {
+        return $this->belongsTo(\App\Models\DistributorCropNeed::class);
+    }
 }

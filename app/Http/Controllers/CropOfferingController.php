@@ -12,8 +12,8 @@ class CropOfferingController extends Controller
     public function index(Request $request)
     {
         $distributorFilter = $request->input('distributor');
-        $termFilter = $request->input('term');
-        $yearFilter = $request->input('year');
+        $term = $request->input('term');
+        $year = $request->input('year') ?? now()->year;
 
         $query = CropOffering::with('distributors')->orderBy('crop_name');
 
@@ -23,20 +23,25 @@ class CropOfferingController extends Controller
             );
         }
 
-        if ($termFilter) {
-            $query->where('term', $termFilter);
+        if ($term) {
+            $query->where('term', $term);
         }
 
-        if ($yearFilter) {
-            $query->where('year', $yearFilter);
+        if ($year) {
+            $query->where('year', $year);
         }
 
         $offerings = $query->get();
         $distributors = User::role('distributor')->get();
 
-        return view('admin.crop_offerings.index', compact('offerings', 'distributors'));
-    }
+        // ✅ Calculate lock state for selected year
+        $areOfferingsLocked = $offerings->count() > 0 &&
+                              $offerings->where('is_locked', false)->count() === 0;
 
+        return view('admin.crop_offerings.index', compact(
+            'offerings', 'distributors', 'year', 'term', 'areOfferingsLocked'
+        ));
+    }
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -167,5 +172,39 @@ class CropOfferingController extends Controller
         $offering->save();
 
         return redirect()->back()->with('success', 'Crop offering submitted to distributors!');
+    }
+
+    public function lock($id)
+    {
+        $offering = CropOffering::findOrFail($id);
+        $offering->is_locked = true;
+        $offering->save();
+
+        return back()->with('success', 'Offering locked.');
+    }
+
+    public function unlock($id)
+    {
+        $offering = CropOffering::findOrFail($id);
+        $offering->is_locked = false;
+        $offering->save();
+
+        return back()->with('success', 'Offering unlocked.');
+    }
+
+    public function toggleLockYear(Request $request, $year)
+    {
+        $offerings = CropOffering::where('year', $year)->get();
+
+        $areCurrentlyLocked = $offerings->every(fn($o) => $o->is_locked);
+
+        foreach ($offerings as $offering) {
+            $offering->is_locked = !$areCurrentlyLocked;
+            $offering->save(); // Make sure this line exists
+        }
+
+        return back()->with('success', $areCurrentlyLocked
+            ? "Unlocked all offerings for $year"
+            : "Locked all offerings for $year");
     }
 }

@@ -12,13 +12,22 @@
 <body>
     <h2>Delivery Label</h2>
     <p><strong>Traceability #:</strong> {{ $note->traceability_number }}</p>
-    <p><strong>Destination:</strong> {{ $note->destination }}</p>
+    <p><strong>Destination:</strong> {{ $note->distributor->name }}</p>
     <p><strong>Date:</strong> {{ $note->created_at->format('Y-m-d') }}</p>
 
     @foreach($note->boxes as $box)
         <div class="box">
+            @if($note->user->business_name)
+                <p><strong> {{ $note->user->business_name }} </strong></p>
+            @endif
+            @if($note->user->location)
+                <p><strong>Location:</strong> {{ $note->user->location }}</p>
+            @endif
             <p><strong>Crop:</strong> {{ $box->crop }}</p>
-            <p><strong>Quantity:</strong> {{ $box->quantity }}</p>
+            <p><strong>Quantity:</strong> {{ $box->quantity }} {{ $box->unit_type ?? 'unit' }}</p>
+            {{-- Grower Details --}}
+            <p><strong>Grower:</strong> {{ $note->user->name }}</p>
+            
             <p class="label-code">Label Code: {{ $box->label_code }}</p>
 
             {{-- QR Code (embedded as SVG) --}}

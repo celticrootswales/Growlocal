@@ -11,10 +11,11 @@ use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\User;
 use App\Models\CropPlan;
+use App\Models\CropOffering;
+use App\Models\GrowerCropCommitment;
 
 class DeliveryNoteController extends Controller
 {
-    
     public function dashboard()
     {
         $user = auth()->user();
@@ -29,10 +30,17 @@ class DeliveryNoteController extends Controller
             ->where('recalled', true)
             ->get();
 
-        // Load crop plans for this grower
         $plans = CropPlan::where('user_id', $user->id)->orderBy('week_start')->get();
 
-        // Calculate supplied quantities from delivery notes
+        $commitments = GrowerCropCommitment::with('cropOffering')
+            ->where('grower_id', $user->id)
+            ->whereYear('created_at', date('Y'))
+            ->get();
+
+        $estimatedValue = $commitments->sum(function ($commitment) {
+            return ($commitment->committed_quantity ?? 0) * ($commitment->cropOffering->default_price ?? 0);
+        });
+
         $supplied = [];
         foreach ($plans as $plan) {
             $total = 0;
@@ -49,7 +57,7 @@ class DeliveryNoteController extends Controller
             $supplied[$plan->id] = $total;
         }
 
-        return view('grower.dashboard', compact('notes', 'recalled', 'plans', 'supplied'));
+        return view('grower.dashboard', compact('notes', 'recalled', 'plans', 'supplied', 'estimatedValue'));
     }
 
     public function index()
@@ -64,23 +72,25 @@ class DeliveryNoteController extends Controller
         return view('grower.notes', compact('notes'));
     }
 
-    
-   
     public function create()
     {
         $user = auth()->user();
-        $currentWeek = now()->startOfWeek()->toDateString();
 
-        $weeklyPlans = \App\Models\WeeklyCropPlan::with(['commitment.cropOffering'])
-            ->whereHas('commitment', fn($q) => $q->where('grower_id', $user->id))
-            ->where('week', $currentWeek)
+        $commitments = GrowerCropCommitment::with('cropOffering')
+            ->where('grower_id', $user->id)
             ->get();
 
-        $distributors = User::role('distributor')->get(); // ✅ Add this line
+        $cropOfferings = $commitments
+            ->pluck('cropOffering')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $distributors = User::role('distributor')->get();
 
         return view('grower.delivery_notes.create', [
-            'weeklyPlans' => $weeklyPlans,
-            'distributors' => $distributors // ✅ And pass it to the view
+            'cropOfferings' => $cropOfferings,
+            'distributors' => $distributors,
         ]);
     }
 
@@ -88,7 +98,7 @@ class DeliveryNoteController extends Controller
     {
         $request->validate([
             'distributor_id' => 'required|exists:users,id',
-            'crops.*.name' => 'required|string',
+            'crops.*.crop_offering_id' => 'required|exists:crop_offerings,id',
             'crops.*.quantity' => 'required|numeric|min:0.01',
             'invoice' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
@@ -106,14 +116,93 @@ class DeliveryNoteController extends Controller
         $note->save();
 
         foreach ($request->crops as $crop) {
+            $offering = CropOffering::find($crop['crop_offering_id']);
+
             $note->boxes()->create([
-                'crop' => $crop['name'],
+                'crop' => $offering->crop_name ?? 'Unknown',
                 'quantity' => $crop['quantity'],
-                'label_code' => strtoupper(Str::random(8)), // Example label code
+                'crop_offering_id' => $offering->id,
+                'unit_type' => $offering->unit ?? 'unit', // <-- Add this line
+                'label_code' => strtoupper(Str::random(8)),
             ]);
         }
 
         return redirect()->route('grower.notes.index')->with('success', 'Delivery note created.');
+    }
+
+    public function generatePdf($id)
+    {
+        $note = DeliveryNote::with([
+            'boxes.cropOffering',
+            'user',
+            'distributor'
+        ])
+        ->where('id', $id)
+        ->where('user_id', auth()->id())
+        ->firstOrFail();
+
+        $totalValue = 0;
+
+        foreach ($note->boxes as $box) {
+            $offering = $box->cropOffering;
+
+            // Fallback if relationship not loaded
+            if (!$offering) {
+                $offering = CropOffering::where('id', $box->crop_offering_id)->first();
+            }
+
+            $commitment = $offering
+                ? GrowerCropCommitment::where('grower_id', $note->user_id)
+                    ->where('crop_offering_id', $offering->id)
+                    ->first()
+                : null;
+
+            $pricePerUnit = $commitment->price ?? $offering->default_price ?? 0;
+            $unitType = $offering->unit ?? 'unit';
+
+            $box->unit_type = $unitType;
+            $box->price_per_unit = $pricePerUnit;
+            $box->total_price = $box->quantity * $pricePerUnit;
+
+            $totalValue += $box->total_price;
+        }
+
+        return Pdf::loadView('pdf.delivery-note', [
+            'note' => $note,
+            'totalValue' => $totalValue
+        ])->download("delivery-note-{$note->id}.pdf");
+    }
+
+    public function generateLabel($id)
+    {
+        $note = DeliveryNote::with(['boxes.cropOffering', 'user', 'distributor'])
+            ->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        foreach ($note->boxes as $box) {
+            $offering = $box->cropOffering;
+
+            $box->unit_type = $offering->unit ?? 'unit';
+            $box->term = $offering->term ?? 'N/A';
+        }
+
+        $pdf = Pdf::loadView('pdf.label', compact('note'));
+        return $pdf->download("label-note-{$note->id}.pdf");
+    }
+
+    public function destroy($id)
+    {
+        $note = DeliveryNote::where('id', $id)->where('user_id', auth()->id())->firstOrFail();
+
+        if ($note->invoice_path && Storage::disk('public')->exists($note->invoice_path)) {
+            Storage::disk('public')->delete($note->invoice_path);
+        }
+
+        $note->boxes()->delete();
+        $note->delete();
+
+        return redirect()->back()->with('success', 'Delivery note deleted.');
     }
 
     public function markDelivered($id)
@@ -122,45 +211,6 @@ class DeliveryNoteController extends Controller
         $note->update(['status' => 'Delivered']);
 
         return redirect()->back()->with('success', 'Marked as delivered.');
-    }
-
-    public function destroy($id)
-    {
-        $note = DeliveryNote::where('id', $id)->where('user_id', auth()->id())->firstOrFail();
-
-        // Delete invoice if it exists
-        if ($note->invoice_path && Storage::disk('public')->exists($note->invoice_path)) {
-            Storage::disk('public')->delete($note->invoice_path);
-        }
-
-        // Delete associated boxes
-        $note->boxes()->delete();
-
-        $note->delete();
-
-        return redirect()->back()->with('success', 'Delivery note deleted.');
-    }
-
-    public function generatePdf($id)
-    {
-        $note = DeliveryNote::with(['boxes', 'user'])
-            ->where('id', $id)
-            ->where('user_id', auth()->id())
-            ->firstOrFail();
-
-        $pdf = Pdf::loadView('pdf.delivery-note', compact('note'));
-        return $pdf->download("delivery-note-{$note->id}.pdf");
-    }
-
-    public function generateLabel($id)
-    {
-        $note = DeliveryNote::with('boxes')
-            ->where('id', $id)
-            ->where('user_id', auth()->id())
-            ->firstOrFail();
-
-        $pdf = Pdf::loadView('pdf.label', compact('note'));
-        return $pdf->download("label-note-{$note->id}.pdf");
     }
 
     public function toggleRecall($id)
@@ -194,5 +244,37 @@ class DeliveryNoteController extends Controller
 
         return back()->with('success', 'Recall acknowledged.');
     }
-}
 
+    public function getOfferingsByDistributor($distributorId)
+    {
+        $user = auth()->user();
+
+        $commitments = GrowerCropCommitment::with('cropOffering')
+            ->where('grower_id', $user->id)
+            ->get();
+
+        $offeringIds = \DB::table('crop_offering_distributor')
+            ->where('distributor_id', $distributorId)
+            ->pluck('crop_offering_id');
+
+        $offerings = $commitments
+            ->pluck('cropOffering')
+            ->filter(fn($o) => $offeringIds->contains($o->id))
+            ->unique('id')
+            ->values()
+            ->map(function ($offering) {
+                return [
+                    'id' => $offering->id,
+                    'label' => sprintf(
+                        '%s (%s, %s) @ £%.2f',
+                        $offering->crop_name,
+                        $offering->unit ?? 'unit',
+                        $offering->term ?? 'N/A',
+                        $offering->default_price ?? 0
+                    ),
+                ];
+            });
+
+        return response()->json($offerings);
+    }
+}

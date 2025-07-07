@@ -11,6 +11,8 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+
+
     <style>
         body { padding-top: 56px; }
 
@@ -172,24 +174,32 @@ th, td {
     </style>
 </head>
 <body>
-    @include('layouts.topnav')
-
-    <div class="d-flex">
-        @include('layouts.sidebar')
-
-
-
-        {{-- Main content with left margin --}}
-        <div id="mainContent">
-            <div class="container-fluid ">
-                @yield('content')
+    <body>
+    {{-- Only show nav/topnav/sidebar for authenticated users --}}
+    @auth
+        @include('layouts.topnav')
+        <div class="d-flex">
+            @include('layouts.sidebar')
+            <div id="mainContent">
+                <div class="container-fluid">
+                    @yield('content')
+                </div>
             </div>
         </div>
-    </div>
+        <div class="overlay-backdrop" id="sidebarBackdrop"></div>
+    @endauth
+
+    {{-- Show content only (no navs) for guests --}}
+    @guest
+        <div>
+            @yield('content')
+        </div>
+    @endguest
 
     <div class="overlay-backdrop" id="sidebarBackdrop"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const sidebar = document.getElementById('mainSidebar');

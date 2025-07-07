@@ -68,10 +68,15 @@ class AdminController extends Controller
     }
 
     // ✅ Admin view for all delivery notes
-    public function viewNotes()
+    public function viewNotes(Request $request)
     {
-        $notes = DeliveryNote::with(['user', 'boxes'])->latest()->paginate(15);
-        return view('admin.notes', compact('notes'));
+        $notes = \App\Models\DeliveryNote::with('user')->latest()->take(15)->get(); // adjust as needed
+        $growers = \App\Models\User::role('grower')->get();
+
+        // If you want recall count
+        $recallsCount = \App\Models\DeliveryNote::where('recalled', true)->count();
+
+        return view('admin.notes', compact('notes', 'growers', 'recallsCount'));
     }
 
     // ✅ Admin view for active recalls

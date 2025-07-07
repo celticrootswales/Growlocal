@@ -15,6 +15,12 @@ class WeeklyCropPlan extends Model
         'expected_quantity',
     ];
 
+   public function estimate()
+    {
+        return $this->hasOne(\App\Models\WeeklyEstimate::class)
+                    ->where('grower_id', auth()->id()); // limit to current grower's estimate
+    }
+
     public function commitment()
     {
         return $this->belongsTo(GrowerCropCommitment::class, 'grower_crop_commitment_id');

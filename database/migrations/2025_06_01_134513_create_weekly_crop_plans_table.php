@@ -11,22 +11,20 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('weekly_crop_plans', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('grower_crop_commitment_id')->constrained()->onDelete('cascade');
-            $table->date('week'); // e.g. 2025-06-01 (Monday of the week)
-            $table->integer('expected_quantity');
-            $table->timestamps();
-
-            $table->unique(['grower_crop_commitment_id', 'week']);
+        Schema::table('weekly_crop_plans', function (Blueprint $table) {
+            $table->unsignedBigInteger('grower_crop_commitment_id')->after('id')->index();
+            $table->foreign('grower_crop_commitment_id')
+                  ->references('id')
+                  ->on('grower_crop_commitments')
+                  ->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('weekly_crop_plans');
+        Schema::table('weekly_crop_plans', function (Blueprint $table) {
+            $table->dropForeign(['grower_crop_commitment_id']);
+            $table->dropColumn('grower_crop_commitment_id');
+        });
     }
 };

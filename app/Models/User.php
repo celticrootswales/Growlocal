@@ -68,14 +68,6 @@ class User extends Authenticatable
         return $this->belongsToMany(User::class, 'distributor_grower', 'grower_id', 'distributor_id');
     }
 
-    /**
-     * Commitments this grower has made.
-     */
-    public function cropCommitments()
-    {
-        return $this->hasMany(GrowerCropCommitment::class);
-    }
-
     public function assignedDistributors()
     {
         return $this->belongsToMany(User::class, 'distributor_grower', 'grower_id', 'distributor_id');
@@ -84,5 +76,14 @@ class User extends Authenticatable
     public function assignedGrowers()
     {
         return $this->belongsToMany(User::class, 'distributor_grower', 'distributor_id', 'grower_id');
+    }
+    public function cropCommitments()
+    {
+        return $this->hasMany(GrowerCropCommitment::class, 'grower_id');
+    }
+
+    public function yearlyCommitments()
+    {
+        return $this->hasMany(YearlyCommitment::class, 'grower_id');
     }
 }

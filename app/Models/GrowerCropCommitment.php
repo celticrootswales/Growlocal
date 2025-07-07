@@ -16,32 +16,38 @@ class GrowerCropCommitment extends Model
         'notes',
     ];
 
-    public function grower()
-    {
-        return $this->belongsTo(User::class, 'grower_id');
+    public function grower() {
+    return $this->belongsTo(User::class, 'grower_id');
+    }
+    public function distributorNeed() {
+        return $this->belongsTo(DistributorCropNeed::class, 'distributor_crop_need_id');
     }
 
-    public function distributorNeed()
-    {
-        return $this->belongsTo(DistributorCropNeed::class, 'distributor_crop_need_id');
-    }    
-
-    public function cropOffering()
+    // Access the crop offering via distributorCropNeed
+   public function cropOffering()
     {
         return $this->hasOneThrough(
             CropOffering::class,
             DistributorCropNeed::class,
-            'id', // Foreign key on DistributorCropNeed
-            'id', // Foreign key on CropOffering
-            'distributor_crop_need_id', // Local key on this model
-            'crop_offering_id' // Local key on DistributorCropNeed
+            'id',
+            'id',
+            'distributor_crop_need_id',
+            'crop_offering_id'
         );
     }
 
-    public function distributorCropNeed()
+    public function weeklyAllocations()
     {
-        return $this->belongsTo(DistributorCropNeed::class);
+        return $this->hasMany(WeeklyAllocation::class);
     }
 
+    public function weeklyPlans()
+    {
+        return $this->hasMany(WeeklyCropPlan::class);
+    }
 
+    public function weeklyCropPlan()
+    {
+        return $this->belongsTo(\App\Models\WeeklyCropPlan::class);
+    }
 }

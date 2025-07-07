@@ -14,6 +14,7 @@ class CropOffering extends Model
 	    'default_price',
 	    'amount_needed',
 	    'term',
+	    'is_locked',
 	];
 
     public function distributors()
@@ -42,4 +43,9 @@ class CropOffering extends Model
 	{
 	    return $this->hasMany(DistributorCropNeed::class);
 	}
+
+	public function isLocked()
+    {
+        return $this->is_locked;
+    }
 }

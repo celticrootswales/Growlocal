@@ -11,25 +11,37 @@ use App\Models\GrowerCropCommitment;
 
 class AdminGrowerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $growers = User::role('grower')->with('distributors')->get();
-        return view('admin.growers.index', compact('growers'));
+        $growersQuery = User::role('grower')->with('distributors');
+        $distributors = User::role('distributor')->get();
+
+        if ($request->filled('distributor')) {
+            $distributorId = $request->input('distributor');
+            $growersQuery->whereHas('distributors', function ($q) use ($distributorId) {
+                $q->where('users.id', $distributorId);
+            });
+        }
+
+        $growers = $growersQuery->get();
+        return view('admin.growers.index', compact('growers', 'distributors'));
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
         $request->validate([
             'email' => 'required|email|unique:users',
             'business_name' => 'required',
-            'distributors' => 'nullable|array'
+            'distributors' => 'nullable|array',
+            'password' => 'nullable|string|min:6'
         ]);
 
-        $password = Str::random(10);
+        $password = $request->filled('password') ? $request->password : Str::random(10);
 
         $user = User::create([
             'email' => $request->email,
-            'name' => $request->business_name,
+            'name' => $request->name,
+            'business_name' => $request->business_name,
             'password' => Hash::make($password),
         ]);
 
@@ -39,9 +51,12 @@ class AdminGrowerController extends Controller
             $user->distributors()->sync($request->distributors);
         }
 
-        // Email can be queued here to notify user with credentials
+        // 🔹 Email credentials (optional)
+        Mail::to($user->email)->send(new GrowerCreated($user, $password));
 
-        return redirect()->route('admin.growers.index')->with('success', 'Grower created!');
+        // 🔹 Show password back to admin
+        return redirect()->route('admin.growers.index')
+            ->with('success', 'Grower created! Temporary password: ' . $password);
     }
 
     public function edit($id)
@@ -51,16 +66,28 @@ class AdminGrowerController extends Controller
         return view('admin.growers.edit', compact('grower', 'distributors'));
     }
 
-    public function update(Request $request, $id)
+   public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
-        $user->name = $request->business_name;
-        $user->email = $request->email;
-        $user->save();
+        $grower = User::findOrFail($id);
 
-        $user->distributors()->sync($request->distributors ?? []);
+        $request->validate([
+            'email' => 'required|email|unique:users,email,' . $grower->id,
+            'business_name' => 'required',
+            'distributors' => 'nullable|array',
+            'password' => 'nullable|string|min:6',
+        ]);
 
-        return redirect()->route('admin.growers.index')->with('success', 'Grower updated.');
+        $grower->update([
+            'email' => $request->email,
+            'name' => $request->name,
+            'business_name' => $request->business_name,
+            'password' => $request->filled('password') ? Hash::make($request->password) : $grower->password,
+        ]);
+
+        $grower->distributors()->sync($request->distributors ?? []);
+
+        return redirect()->route('admin.growers.edit', $grower->id)
+            ->with('success', 'Grower updated' . ($request->filled('password') ? ' with new password.' : '.'));
     }
 
     public function destroy($id)

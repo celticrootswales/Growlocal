@@ -18,7 +18,7 @@ class DistributorCropNeed extends Model
 
     public function cropOffering()
     {
-        return $this->belongsTo(CropOffering::class, 'crop_offering_id');
+        return $this->belongsTo(\App\Models\CropOffering::class);
     }
 
     public function distributor()
@@ -26,8 +26,11 @@ class DistributorCropNeed extends Model
         return $this->belongsTo(User::class, 'distributor_id');
     }
 
+
     public function growerCommitments()
     {
         return $this->hasMany(GrowerCropCommitment::class, 'distributor_crop_need_id');
     }
+
+    
 }

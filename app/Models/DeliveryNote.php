@@ -31,6 +31,11 @@ class DeliveryNote extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function cropOffering()
+    {
+        return $this->belongsTo(\App\Models\CropOffering::class, 'crop_offering_id');
+    }
+
     // One-to-Many: DeliveryNote has many DeliveryBoxes
     public function boxes()
     {

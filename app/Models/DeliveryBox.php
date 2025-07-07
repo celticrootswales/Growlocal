@@ -14,6 +14,7 @@ class DeliveryBox extends Model
         'crop',
         'quantity',
         'label_code',
+        'crop_offering_id',
     ];
 
     public function deliveryNote()
@@ -24,5 +25,14 @@ class DeliveryBox extends Model
     public function grower()
     {
         return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
+
+    public function note()
+    {
+        return $this->belongsTo(\App\Models\DeliveryNote::class, 'delivery_note_id');
+    }
+    public function cropOffering()
+    {
+        return $this->belongsTo(\App\Models\CropOffering::class, 'crop_offering_id');
     }
 }

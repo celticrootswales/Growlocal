@@ -19,8 +19,15 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->unique(['grower_id', 'distributor_crop_need_id']);
-        });    }
+            $table->unique(
+                [
+                    'grower_id', 
+                    'distributor_crop_need_id'
+                ], 
+                'g_c_grower_dist_crop_unique'
+            );
+        });    
+    }
 
     /**
      * Reverse the migrations.

@@ -12,6 +12,7 @@ return new class extends Migration
     public function up()
     {
         Schema::table('grower_crop_commitments', function (Blueprint $table) {
+            $table->dropForeign(['user_id']);
             $table->dropColumn('user_id');
         });
     }
@@ -19,7 +20,11 @@ return new class extends Migration
     public function down()
     {
         Schema::table('grower_crop_commitments', function (Blueprint $table) {
-            $table->foreignId('user_id')->nullable();
+            $table
+                ->foreignId('user_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
         });
     }
 };

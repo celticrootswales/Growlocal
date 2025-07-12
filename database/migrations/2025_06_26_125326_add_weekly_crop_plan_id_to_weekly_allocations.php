@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('weekly_allocations', function (Blueprint $table) {
-            $table->unsignedBigInteger('weekly_crop_plan_id')->nullable()->after('commitment_id');
+            $table->unsignedBigInteger('weekly_crop_plan_id')->nullable();
             $table->foreign('weekly_crop_plan_id')->references('id')->on('weekly_crop_plans')->onDelete('cascade');
         });
     }

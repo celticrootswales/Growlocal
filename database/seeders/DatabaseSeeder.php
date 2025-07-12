@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Spatie\Permission\Models\Role;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -19,8 +19,10 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
-         $this->call(GrowerSeeder::class);
 
-         $this->call(CropPlanSeeder::class);
+        Role::firstOrCreate(['name' => 'grower', 'guard_name' => 'web']);
+
+        $this->call(GrowerSeeder::class);
+        $this->call(CropPlanSeeder::class);
     }
 }

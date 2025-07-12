@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up()
     {
         Schema::table('grower_crop_commitments', function (Blueprint $table) {
-            $table->boolean('is_locked')->default(false)->after('amount');
+            $table->boolean('is_locked')->default(false);
         });
     }
 

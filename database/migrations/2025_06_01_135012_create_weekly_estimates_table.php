@@ -13,7 +13,12 @@ return new class extends Migration
     {
         Schema::create('weekly_estimates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('weekly_crop_plan_id')->constrained()->onDelete('cascade');
+
+            $table
+                ->foreignId('weekly_crop_plan_id')
+                ->constrained()
+                ->onDelete('cascade');
+                
             $table->foreignId('grower_id')->constrained('users')->onDelete('cascade');
             $table->integer('estimated_quantity');
             $table->text('notes')->nullable();

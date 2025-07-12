@@ -14,7 +14,7 @@ class CropPlanSeeder extends Seeder
         $grower = User::where('email', 'deancjenko@gmail.com')->first();
 
         if (!$distributor || !$grower) {
-            $this->command->error('Distributor or Grower not found. Please ensure they exist.');
+            $this->command->warn('CropPlanSeeder skipped: distributor and/or grower not found.');
             return;
         }
 

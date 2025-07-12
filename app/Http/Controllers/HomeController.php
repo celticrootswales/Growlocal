@@ -21,7 +21,6 @@ class HomeController extends Controller
 
         // Meals delivered: Example, count of notes for schools (or total if you prefer)
         $meals = DeliveryNote::whereYear('created_at', 2025)
-                    ->whereNotNull('school_id') // If you track schools
                     ->count();
 
         // Traceability: Percent of delivery notes with trace number (should be 100%)
